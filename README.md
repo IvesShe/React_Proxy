@@ -244,3 +244,121 @@ getStudentData = ()=>{
 ```
 
 ![image](./images/20210227152519.png)
+
+# 源代碼
+
+## App.jsx
+
+```jsx
+import React, { Component } from 'react'
+import axios from 'axios'
+export default class App extends Component {
+
+  getStudentData = ()=>{
+    let url = 'http://localhost:3000/api1/students'
+    axios.get(url).then(
+      response => {console.log('成功了',response.data);},
+      error => {console.log('失敗了',error);}
+    )
+  }
+
+  getCarData = ()=>{
+    let url = 'http://localhost:3000/api2/cars'
+    axios.get(url).then(
+      response => {console.log('成功了',response.data);},
+      error => {console.log('失敗了',error);}
+    )
+  }
+
+  render() {
+    return (
+      <div>
+        <button onClick={this.getStudentData}>點我獲取學生數據</button>
+        <button onClick={this.getCarData}>點我獲取汽車數據</button>
+      </div>
+    );
+  }
+}
+
+```
+
+## setupProxy.js
+
+```js
+const proxy = require('http-proxy-middleware')
+
+module.exports = function(app){
+    app.use(
+        proxy('/api1',{ // 遇見/api1前綴的請求，就會觸發該代理配置
+            // 請求轉發給誰
+            target:'http://localhost:6002', 
+            
+            // 控制服務器收到的響應頭Host字段的值(改變原始的來源)
+            // 為ture時會用target6002，為false時則使用客戶端原始的端口3000
+            changeOrigin:true,  
+
+            // 重寫請求路徑    
+            pathRewrite:{'^/api1':''}
+        }),
+        proxy('/api2',{
+            target:'http://localhost:6001',
+            changeOrigin:true,
+            pathRewrite:{'^/api2':''}
+        })
+    )
+}
+```
+
+## server1.js
+
+```js
+const express = require('express')
+const app = express()
+
+app.use((request,response,next)=>{
+	console.log('有人請求服務器1了');
+	console.log('請求來自於',request.get('Host'));
+	console.log('請求的地址',request.url);
+	next()
+})
+
+app.get('/students',(request,response)=>{
+	const students = [
+		{id:'001',name:'tom',age:18},
+		{id:'002',name:'jerry',age:19},
+		{id:'003',name:'tony',age:120},
+	]
+	response.send(students)
+})
+
+app.listen(6002,(err)=>{	
+	if(!err) console.log('服務器1啟動成功了，請求學生信息地址為：http://localhost:6002/students');
+})
+
+```
+
+## server2.js
+
+```js
+const express = require('express')
+const app = express()
+
+app.use((request,response,next)=>{
+	console.log('有人請求服務器2了');
+	next()
+})
+
+app.get('/cars',(request,response)=>{
+	const cars = [
+		{id:'001',name:'賓士',price:199},
+		{id:'002',name:'馬自達',price:109},
+		{id:'003',name:'BMW',price:120},
+	]
+	response.send(cars)
+})
+
+app.listen(6001,(err)=>{
+	if(!err) console.log('服務器2啟動成功了，請求汽車信息地址為：http://localhost:6001/cars');
+})
+
+```
